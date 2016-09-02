@@ -23,6 +23,7 @@
 
 #include "OMXVideoDecoderBase.h"
 
+
 static const char* VA_RAW_MIME_TYPE = "video/x-raw-va";
 static const uint32_t VA_COLOR_FORMAT = 0x7FA00E00;
 
@@ -527,7 +528,6 @@ OMX_ERRORTYPE OMXVideoDecoderBase::PrepareConfigBuffer(VideoConfigBuffer *p) {
             }
         }
         p->flag |= USE_NATIVE_GRAPHIC_BUFFER;
-        p->graphicBufferStride = mGraphicBufferParam.graphicBufferStride;
         p->graphicBufferColorFormat = mGraphicBufferParam.graphicBufferColorFormat;
         p->graphicBufferWidth = mGraphicBufferParam.graphicBufferWidth;
         p->graphicBufferHeight = mGraphicBufferParam.graphicBufferHeight;
@@ -1039,7 +1039,8 @@ OMX_ERRORTYPE OMXVideoDecoderBase::SetNativeBufferModeSpecific(OMX_PTR pStructur
     }
     port_def.format.video.cMIMEType = (OMX_STRING)VA_VED_RAW_MIME_TYPE;
     port_def.format.video.eColorFormat = OMX_INTEL_COLOR_FormatYUV420PackedSemiPlanar;
-    port_def.format.video.nFrameHeight = (port_def.format.video.nFrameHeight + 0x1f) & ~0x1f;
+    port_def.format.video.nFrameHeight = port_def.format.video.nFrameHeight;
+
     port_def.format.video.eColorFormat = GetOutputColorFormat(
                         port_def.format.video.nFrameWidth);
     port->SetPortDefinition(&port_def,true);
@@ -1053,7 +1054,7 @@ OMX_ERRORTYPE OMXVideoDecoderBase::GetStoreMetaDataMode(OMX_PTR) {
 }
 
 OMX_ERRORTYPE OMXVideoDecoderBase::SetStoreMetaDataMode(OMX_PTR pStructure) {
-#if !defined(USE_META_DATA) || defined(ASUS_ZENFONE2_LP_BLOBS)
+#ifndef USE_META_DATA
     OMX_PARAM_PORTDEFINITIONTYPE defInput;
     memcpy(&defInput,
         this->ports[INPORT_INDEX]->GetPortDefinition(),
@@ -1134,6 +1135,11 @@ OMX_ERRORTYPE OMXVideoDecoderBase::GetDecoderOutputCropSpecific(OMX_PTR pStructu
         rectParams->nTop = formatInfo->cropTop;
         rectParams->nWidth = formatInfo->width - formatInfo->cropLeft - formatInfo->cropRight;
         rectParams->nHeight = formatInfo->height - formatInfo->cropTop - formatInfo->cropBottom;
+        if (strcasecmp(formatInfo->mimeType,"video/avc") == 0 ||
+            strcasecmp(formatInfo->mimeType,"video/h264") == 0) {
+            rectParams->nHeight = formatInfo->height;
+            rectParams->nWidth = formatInfo->width;
+        }
 
         // if port width parsed from extractor is not as same as from SPS/PPS nalu header,
         // align it.
